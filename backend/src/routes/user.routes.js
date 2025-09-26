@@ -4,7 +4,7 @@ import { loginUser, logoutUser, refreshAccessToken, registerUser, changeCurrentP
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
-console.log(registerUser);
+// console.log(registerUser);
 
 
 router.route("/register").post(registerUser)

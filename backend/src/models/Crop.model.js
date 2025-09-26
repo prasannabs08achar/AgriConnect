@@ -8,7 +8,7 @@ const cropSchema = new mongoose.Schema({
     price: { type: Number, required: true },
     harvestDate: { type: Date, required: true },
     images: [String],
-    description: String,
+    description:{type: String, required: true},
     location: {
         type: { type: String, enum: ["Point"], default: "Point" },
         coordinates: { type: [Number], required: true }
@@ -17,5 +17,5 @@ const cropSchema = new mongoose.Schema({
 });
 
 cropSchema.index({ location: "2dsphere" });
+export const Crop = mongoose.model("Crop", cropSchema)
 
-export default mongoose.model("Crop", cropSchema);
