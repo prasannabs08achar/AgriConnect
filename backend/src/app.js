@@ -22,8 +22,10 @@ app.use(express.static("public"))
 app.use(cookieParser());
 import userRouter from './routes/user.routes.js';
 import farmerRouter from './routes/farmer.route.js'
+import buyerRouter from './routes/buyers.route.js'
 app.use('/api/v1/users', userRouter)
 app.use('/api/v1/farmers', farmerRouter)
+app.use('/api/v1/buyers', buyerRouter)
 
 
 export default app;
