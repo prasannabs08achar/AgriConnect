@@ -7,46 +7,49 @@ import { uploadCloudinary } from "../utils/cloudinary.utils.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 
 const addCrop = asyncHandler(async (req, res) => {
-    const { name, category, quantity, price, harvestDate, description} = req.body;
-    let location;
+    const { name, category, quantity, price, harvestDate, description } = req.body;
+    let location = req.body.location;
+  
     try {
-        location = JSON.parse(req.body.location);
-    } catch (err) {
-        throw new ApiError(400, "Invalid location format. Must be a JSON object with type and coordinates.");
-    }
-    // Validate fields
+      const parsed = JSON.parse(location);
+      if (parsed.type && parsed.coordinates) {
+        location = parsed;
+      }
+    } catch (e) {}
+  
+    if (!location) throw new ApiError(400, "Location is required");
+  
     if ([name, category, description].some(f => !f?.trim()) || !quantity || !price || !harvestDate) {
-        throw new ApiError(400, "All fields are required");
+      throw new ApiError(400, "All fields are required");
     }
-
-    // Validate images
+  
+    // ✅ multer with upload.array("images") ensures req.files is an array
     if (!req.files || req.files.length === 0) {
-        throw new ApiError(400, "At least one image is required");
+      throw new ApiError(400, "At least one image is required");
     }
-
+  
     const uploadedImages = [];
     for (const file of req.files) {
-        const uploaded = await uploadCloudinary(file.path);
-        if (!uploaded?.url) throw new ApiError(500, "Failed to upload image");
-        uploadedImages.push(uploaded.url);
+      const uploaded = await uploadCloudinary(file.path);
+      if (!uploaded?.url) throw new ApiError(500, "Failed to upload image");
+      uploadedImages.push(uploaded.url);
     }
-
-
-    // Create crop
+  
     const crop = await Crop.create({
-        name,
-        category,
-        quantity,
-        price,
-        harvestDate,
-        description,
-        location,
-        images: uploadedImages,
-        farmer: req.user._id
+      name,
+      category,
+      quantity,
+      price,
+      harvestDate,
+      description,
+      location,
+      images: uploadedImages,
+      farmer: req.user._id,
     });
-
+  
     return res.status(201).json(new ApiResponse(201, crop, "Crop added successfully"));
-});
+  });
+  
 
 
 const updateCrop=asyncHandler(async(req,res)=>{
@@ -58,12 +61,21 @@ const updateCrop=asyncHandler(async(req,res)=>{
         throw new ApiError(401, "Unauthorized Access");
     }
     const { name, category, quantity, price, harvestDate,  description}=req.body
-    let location;
-    try {
-        location = JSON.parse(req.body.location);
-    } catch (err) {
-        throw new ApiError(400, "Invalid location format. Must be a JSON object with type and coordinates.");
+    let location = req.body.location;
+
+try {
+    // If it's JSON (GeoJSON string), parse it
+    const parsed = JSON.parse(location);
+    if (parsed.type && parsed.coordinates) {
+        location = parsed; // Use GeoJSON object
     }
+} catch (e) {
+    // If it's not JSON, keep as string (like "Mumbai, Maharashtra")
+}
+if (!location) {
+    throw new ApiError(400, "Location is required");
+}
+
     
     if (req.files && req.files.length > 0) {
         const uploadedImages = [];
