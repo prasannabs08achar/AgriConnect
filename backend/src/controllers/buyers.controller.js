@@ -5,6 +5,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 
 const searchCrops = asyncHandler(async (req, res) => {
+    console.log('Search crops request received:', req.query);
     const { name, category, minPrice, maxPrice } = req.query;
 
     let query = {};
@@ -26,11 +27,9 @@ const searchCrops = asyncHandler(async (req, res) => {
         if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-
+    console.log("Search query:", query);
     const crops = await Crop.find(query);
-
-    // console.log("Query:", query);
-    // console.log( crops);
+    console.log("Found crops:", crops.length);
 
     return res.status(200).json(new ApiResponse(200, crops, "Crops fetched successfully"));
 });
@@ -87,7 +86,16 @@ const placeOrder = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Requested quantity exceeds available stock");
     }
 
+    // Reduce the crop quantity after successful validation
+    const newQuantity = crop.quantity - qty;
+    if (newQuantity < 0) {
+        throw new ApiError(400, "Insufficient stock available");
+    }
     
+    crop.quantity = newQuantity;
+    await crop.save();
+    
+    console.log(`Crop ${crop.name} quantity reduced from ${crop.quantity + qty} to ${crop.quantity}`);
 
     const order = await Order.create({
         crop: crop._id,
@@ -113,6 +121,38 @@ const getBuyerOrdersHistory=asyncHandler(async(req,res)=>{
     return res.status(200).json(new ApiResponse(200,orders,"Orders fetched successfully"))
 })
 
+const cancelOrder = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    
+    const order = await Order.findById(orderId).populate('crop');
+    if (!order) {
+        throw new ApiError(404, "Order not found");
+    }
+    
+    // Check if the order belongs to the buyer
+    if (order.buyer.toString() !== req.user._id.toString()) {
+        throw new ApiError(401, "Unauthorized to cancel this order");
+    }
+    
+    // Check if order can be cancelled (e.g., not already completed)
+    if (order.status === 'completed') {
+        throw new ApiError(400, "Cannot cancel completed order");
+    }
+    
+    // Restore the quantity to the crop
+    const crop = order.crop;
+    crop.quantity = crop.quantity + order.quantity;
+    await crop.save();
+    
+    // Update order status to cancelled
+    order.status = 'cancelled';
+    await order.save();
+    
+    console.log(`Order ${orderId} cancelled. Crop ${crop.name} quantity restored from ${crop.quantity - order.quantity} to ${crop.quantity}`);
+    
+    return res.status(200).json(new ApiResponse(200, order, "Order cancelled successfully"));
+});
+
 const getOrdersWithDistance=asyncHandler(async(req,res)=>{
     const {id}=req.params;
     const order=await Order.findById(id).populate("crop","name price").populate("buyer","name location").populate("crop.farmer","name phone location")
@@ -137,4 +177,4 @@ const getOrdersWithDistance=asyncHandler(async(req,res)=>{
     return res.status(200).json(new ApiResponse(200,{order,distance:`${distance.toFixed(2)} km}`},"Order details fetched successfully"))
 })
 
-export {searchCrops,searchNearByCrops,placeOrder,getBuyerOrdersHistory,getOrdersWithDistance}
+export {searchCrops,searchNearByCrops,placeOrder,getBuyerOrdersHistory,getOrdersWithDistance,cancelOrder}

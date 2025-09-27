@@ -137,4 +137,11 @@ const getFarmerOrders = asyncHandler(async (req, res) => {
 
 
 
-export {addCrop,updateCrop,deleteCrop,getFarmerOrders}
+const getFarmerCrops = asyncHandler(async (req, res) => {
+    console.log('Fetching farmer crops for user:', req.user._id);
+    const crops = await Crop.find({ farmer: req.user._id });
+    console.log('Found crops:', crops.length);
+    return res.status(200).json(new ApiResponse(200, crops, "Farmer crops fetched successfully"));
+});
+
+export {addCrop,updateCrop,deleteCrop,getFarmerOrders,getFarmerCrops}

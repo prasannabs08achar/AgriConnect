@@ -81,7 +81,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const options = {
         httpOnly: true,
-        secure: true
+        secure: false // Set to false for development
     }
     return res.status(200).cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).json(
         new ApiResponse(
@@ -105,7 +105,7 @@ const logoutUser = asyncHandler(async (req, res) => {
         })
     const options = {
         httpOnly: true,
-        secure: true
+        secure: false // Set to false for development
     }
     return res.status(200).clearCookie("accessToken", options).clearCookie("refreshToken", options).json(new ApiResponse(200, {}, "User logged out succesfully "))
 })
@@ -117,7 +117,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         throw new ApiError(401, "unauthorized access")
     }
     try {
-        const decodedToken = jwt.verify(incommingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+        const decodedToken = jwt.verify(incommingRefreshToken, process.env.REFRESH_TOKEN_SECRET || 'default-refresh-secret');
 
         const user = await User.findById(decodedToken?._id)
         if (!user) {
@@ -128,10 +128,10 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         }
         const options = {
             httpOnly: true,
-            secure: true
+            secure: false // Set to false for development
         }
 
-        const { accessToken, newRefreshToken } = await generateAccessAndRefreshToken(user._id)
+        const { accessToken, refreshToken: newRefreshToken } = await generateAccessAndRefreshToken(user._id)
 
         return res.status(200).cookie("accessToken", accessToken, options).cookie("refreshToken", newRefreshToken, options).json(new ApiResponse(200, {
             accessToken, refreshToken: newRefreshToken,
